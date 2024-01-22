@@ -1,0 +1,141 @@
+definitions:
+  models.Error:
+    properties:
+      code:
+        type: integer
+      error:
+        type: string
+    type: object
+  models.SaveStudent:
+    properties:
+      age:
+        type: integer
+      country:
+        type: string
+      created-at:
+        type: string
+      email:
+        type: string
+      gender:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      surname:
+        type: string
+      updated-at:
+        type: string
+    required:
+    - age
+    - country
+    - email
+    - gender
+    - name
+    - surname
+    type: object
+  models.SaveUser:
+    properties:
+      ID:
+        type: integer
+      email:
+        type: string
+      username:
+        type: string
+    required:
+    - ID
+    - email
+    - username
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  title: cmd Service
+  version: 1.0.0
+paths:
+  /:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User
+        in: body
+        name: body
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ok
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Error'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.Error'
+      summary: заносит в базу url в базу если его не было и выдает сокращеный url
+      tags:
+      - shortUrl
+  /:key:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Temporary Redirect
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Error'
+      summary: переходим по ссылке которая хранится в базе данных используя короткий
+        url как ключ
+      tags:
+      - shortUrl
+  /get/:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SaveStudent'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Error'
+      summary: получаем массив объектов и отправляем клиенту
+      tags:
+      - user
+  /get/user:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SaveUser'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Error'
+      summary: получаем массив объектов и отправляем клиенту
+      tags:
+      - user
+swagger: "2.0"
