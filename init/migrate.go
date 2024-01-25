@@ -3,14 +3,16 @@ package migrate
 import (
 	"YandexPra/config"
 	"YandexPra/iternal/domain"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/gofrs/uuid"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"gopkg.in/gormigrate.v1"
 )
 
-// Migrate run migration for all entities and add constraints for them,
-// создаем таблицы и закидываем в бл тут
+// Migrate запустите миграцию для всех объектов и добавьте для них ограничения
+// создаем таблицы и закидываем в бд тут
 func Migrate() {
 	db := config.DB
 	id, _ := uuid.NewV4()
@@ -41,12 +43,12 @@ func Migrate() {
 
 	err := m.Migrate()
 	if err != nil {
-		panic(err)
+		log.WithField("component", "migration").Panic(err)
 	}
 
 	if err == nil {
-		println("Migration did run successfully")
+		log.WithField("component", "migration").Info("Migration did run successfully")
 	} else {
-		println("Could not migrate: %v", err)
+		log.WithField("component", "migration").Infof("Could not migrate: %v", err)
 	}
 }

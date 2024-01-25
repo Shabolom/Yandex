@@ -1,16 +1,19 @@
 package api
 
 import (
+	"YandexPra/iternal/models"
 	"YandexPra/iternal/service"
 	"YandexPra/iternal/tools"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"strings"
 )
 
-type ShortUrl struct {
-}
+type ShortUrl struct{}
 
 func NewShortUrl() *ShortUrl {
 	return &ShortUrl{}
@@ -39,18 +42,23 @@ func (a *ShortUrl) Post(c *gin.Context) {
 	// используем функцию io.ReadAll которая возвращает нам ошибку и байты которые мы потом
 	// де сериализируем (преобразуем из байтового формата в объект)
 	content, err := io.ReadAll(c.Request.Body)
+
 	if err != nil {
 		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
 		return
 	}
 
 	stringContent := string(content)
+	stringContent = strings.Replace(stringContent, `"`, "", -1)
+
 	defer c.Request.Body.Close()
 
 	result, err := urlService.Post(shortUrl, stringContent)
 
 	if err != nil {
 		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
 		return
 	}
 
@@ -76,6 +84,7 @@ func (a *ShortUrl) Get(c *gin.Context) {
 
 	if err != nil {
 		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
 		return
 	}
 	fmt.Println("6")
@@ -94,13 +103,14 @@ func (a *ShortUrl) Get(c *gin.Context) {
 func (a *ShortUrl) GetID(c *gin.Context) {
 
 	result, err := urlService.GetID()
-	fmt.Println("qwer7")
+
 	if err != nil {
 		fmt.Println(err)
 		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
 		return
 	}
-	fmt.Println("qwer9")
+
 	c.JSON(http.StatusOK, result)
 }
 
@@ -119,6 +129,48 @@ func (a *ShortUrl) GetUsers(c *gin.Context) {
 
 	if err != nil {
 		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// GetShorten принимаем в теле урл и возвращаем сокращеный
+// @Summary  полуяаем сокращеный урл
+// @Produce  json
+// @Accept   json
+// @Tags     url
+// @Success  200  {array}  models.ResUrl
+// @Failure  400  {object}  models.Error
+// @Router   /api/shorten [post]
+func (a *ShortUrl) GetShorten(c *gin.Context) {
+
+	var reqUrl models.ReqUrl
+
+	shortUrl := tools.Base62Encode(tools.RundUrl())
+
+	body, err := io.ReadAll(c.Request.Body)
+
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "ReadAll").Warn(err)
+		return
+	}
+
+	err = json.Unmarshal(body, &reqUrl)
+
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "Unmarshal").Warn(err)
+		return
+	}
+
+	result, err := urlService.PostShorten(reqUrl, shortUrl)
+
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
 		return
 	}
 

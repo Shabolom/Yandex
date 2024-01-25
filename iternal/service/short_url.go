@@ -74,4 +74,22 @@ func (su *ShortUrl) GetUser() ([]models2.SaveUser, error) {
 	}
 
 	return models, nil
+
+}
+
+func (su *ShortUrl) PostShorten(url models2.ReqUrl, short string) (models2.ResUrl, error) {
+
+	urlReqEntity := domain.Urls{
+		Url:   url.Url,
+		Short: short,
+	}
+
+	result, err := urlRepo.PostShorten(urlReqEntity)
+	if err != nil {
+		return models2.ResUrl{}, nil
+	}
+
+	urlRes := models2.ResUrl{Url: result}
+
+	return urlRes, nil
 }
