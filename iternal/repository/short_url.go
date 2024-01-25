@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	parseUrl "net/url"
 	"strings"
 )
 
@@ -19,18 +20,24 @@ func NewUrlRepo() *UrlRepo {
 
 func (ur *UrlRepo) Post(url domain.Urls) (string, error) {
 
+	_, err := parseUrl.ParseRequestURI(url.Url)
+
+	if err != nil {
+		return "", errors.New("не валидный урл " + url.Url)
+	}
+
 	if result, err := ur.Get(url.Url); err == nil {
 		fmt.Println("такой url уже есть в базе")
-		return "http://localhost:8080/" + result.Short, nil
+		return config.Env.LocalApi + result.Short, nil
 	}
 
 	// метод библиотеки для сохранения сущности в базе данных
-	err := config.DB.Create(&url).Error
+	err = config.DB.Create(&url).Error
 
 	if err != nil {
 		return "", err
 	}
-	return "http://localhost:8080/" + url.Short, nil
+	return config.Env.LocalApi + url.Short, nil
 }
 
 func (ur *UrlRepo) Get(key string) (domain.Urls, error) {
@@ -51,10 +58,11 @@ func (ur *UrlRepo) Get(key string) (domain.Urls, error) {
 }
 
 func (ur *UrlRepo) GetID() ([]byte, error) {
+	c := config.Env
 
 	//data := []byte(`{"login": "admin", "password": "admin"}`)
 	data := `{"login": "admin", "password": "admin"}`
-	response, err := http.Post("http://localhost:8080/api/user/login", "application/json", strings.NewReader(data))
+	response, err := http.Post(c.ConnectionApi, "application/json", strings.NewReader(data))
 	//response, err := http.Post("http://localhost:8000/api/user/login", "application/json", bytes.NewBuffer(data))
 	// если что смотреть тут https://practicum.yandex.ru/learn/go-advanced/courses/fe725b51-a888-4c0a-809a-611a1ef8e2ba/sprints/161327/topics/6582b0e4-a277-4b6e-b492-a9b98681d530/lessons/a535ccde-9231-48a6-9ac2-ca7b8149c8bf/
 
@@ -63,8 +71,7 @@ func (ur *UrlRepo) GetID() ([]byte, error) {
 	}
 
 	if response.Header.Get("Token") != "" {
-
-		req, err := http.NewRequest(http.MethodGet, "http://localhost:8080/api/student", nil)
+		req, err := http.NewRequest(http.MethodGet, c.ConnectionGet, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +102,7 @@ func (ur *UrlRepo) GetID() ([]byte, error) {
 
 func (ur *UrlRepo) GetUser() ([]byte, error) {
 
-	req, err := http.NewRequest(http.MethodGet, "https://jsonplaceholder.typicode.com/users", nil)
+	req, err := http.NewRequest(http.MethodGet, config.Env.JsonApi, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -114,4 +121,13 @@ func (ur *UrlRepo) GetUser() ([]byte, error) {
 	defer resp.Body.Close()
 
 	return body, nil
+}
+func (ur *UrlRepo) PostShorten(model domain.Urls) (string, error) {
+
+	result, err := ur.Post(model)
+	if err != nil {
+		return "", err
+	}
+
+	return result, nil
 }

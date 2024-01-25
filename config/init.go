@@ -4,17 +4,23 @@ import (
 	"flag"
 	"github.com/joho/godotenv"
 	"os"
+	"strconv"
 )
 
 // env Структура для хранения переменных среды
 type env struct {
-	Host       string
-	Port       string
-	DbHost     string
-	DbPort     string
-	DbUser     string
-	DbPassword string
-	DbName     string
+	Host          string
+	Port          string
+	DbHost        string
+	DbPort        string
+	DbUser        string
+	DbPassword    string
+	DbName        string
+	JsonApi       string
+	LocalApi      string
+	ConnectionApi string
+	ConnectionGet string
+	Production    bool
 }
 
 // Env глобальная переменная для доступа к переменным среды
@@ -22,6 +28,7 @@ var Env env
 
 // CheckFlagEnv Метод проверяющий флаги
 func CheckFlagEnv() {
+
 	var host string
 	var port string
 	var dbHost string
@@ -29,7 +36,13 @@ func CheckFlagEnv() {
 	var dbUser string
 	var dbPassword string
 	var dbName string
+	var jsonApi string
+	var localApi string
+	var connectionApi string
+	var connectionGet string
+	var production bool
 
+	// сканируем env файл
 	err := godotenv.Load()
 
 	if err != nil {
@@ -43,6 +56,7 @@ func CheckFlagEnv() {
 	var flagDbUser = flag.String("du", "", "dbUser")
 	var flagDbPassword = flag.String("dpa", "", "dbPassword")
 	var flagDbName = flag.String("dn", "", "dbName")
+	var flagProduction = flag.Bool("pr", false, "production")
 
 	flag.Parse()
 
@@ -88,6 +102,36 @@ func CheckFlagEnv() {
 		dbName = ""
 	}
 
+	if os.Getenv("JSON_API_API") != "" {
+		jsonApi = os.Getenv("JSON_API_API")
+	} else {
+		jsonApi = ""
+	}
+
+	if os.Getenv("LOCAL_API") != "" {
+		jsonApi = os.Getenv("LOCAL_API")
+	} else {
+		jsonApi = ""
+	}
+
+	if os.Getenv("CONNECTION_API_AUT") != "" {
+		connectionApi = os.Getenv("CONNECTION_API_AUT")
+	} else {
+		connectionApi = ""
+	}
+
+	if os.Getenv("CONNECTION_API_GET") != "" {
+		connectionGet = os.Getenv("CONNECTION_API_GET")
+	} else {
+		connectionGet = ""
+	}
+
+	if os.Getenv("PRODUCTION") != "" {
+		production, _ = strconv.ParseBool(os.Getenv("PRODUCTION"))
+	} else {
+		production = false
+	}
+
 	if *flagHost != "" {
 		host = *flagHost
 	}
@@ -116,13 +160,22 @@ func CheckFlagEnv() {
 		dbName = *flagDbName
 	}
 
+	if *flagProduction != false {
+		production = *flagProduction
+	}
+
 	Env = env{
-		Host:       host,
-		Port:       port,
-		DbHost:     dbHost,
-		DbPort:     dbPort,
-		DbUser:     dbUser,
-		DbPassword: dbPassword,
-		DbName:     dbName,
+		Host:          host,
+		Port:          port,
+		DbHost:        dbHost,
+		DbPort:        dbPort,
+		DbUser:        dbUser,
+		DbPassword:    dbPassword,
+		DbName:        dbName,
+		JsonApi:       jsonApi,
+		LocalApi:      localApi,
+		ConnectionApi: connectionApi,
+		ConnectionGet: connectionGet,
+		Production:    production,
 	}
 }

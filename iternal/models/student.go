@@ -6,7 +6,7 @@ import (
 )
 
 type SaveStudent struct {
-	ID        uuid.UUID `gorm:"type:uuid;" json:"id"`
+	ID        uuid.UUID `json:"type:uuid;" json:"id"`
 	CreatedAt time.Time `json:"created-at"`
 	UpdatedAt time.Time `json:"updated-at"`
 	Name      string    `json:"name,omitempty" binding:"required"`

@@ -5,6 +5,8 @@ import (
 	_ "YandexPra/docs"
 	migrate "YandexPra/init"
 	"YandexPra/iternal/routes"
+	"YandexPra/iternal/tools"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -12,17 +14,16 @@ func main() {
 	// @version  1.0.0
 	// @host     localhost:8080
 
-	// сканируем env файл
-	//_ = godotenv.Load(".env")
 	config.CheckFlagEnv()
+	tools.InitLogger()
 
 	// config.InitPgSQL инициализируем подключение к базе данных
 	err := config.InitPgSQL()
 	if err != nil {
-		panic(err)
+		log.WithField("component", "initialization").Panic(err)
 	}
 
-	// вызываем миграцию труктуры в базу данных
+	// вызываем миграцию структуры в базу данных
 	migrate.Migrate()
 
 	//test.ClientGet()
@@ -35,8 +36,8 @@ func main() {
 	r := routes.SetupRouter()
 
 	// запуск сервера
-	if err := r.Run(config.Env.DbHost + ":" + config.Env.Port); err != nil {
-		panic(err)
+	if err = r.Run(config.Env.Host + ":" + config.Env.Port); err != nil {
+		log.WithField("component", "run").Panic(err)
 	}
 
 }

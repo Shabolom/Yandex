@@ -1,4 +1,4 @@
-package flags
+package tools
 
 import (
 	"errors"
@@ -33,10 +33,11 @@ func Flag() {
 }
 
 func Address() string {
-	host := new(Roud)
-	_ = flag.Value(host)
+	var host Roud
+	// запись принципиально не отличается от host := new(Roud) но функция new возвращает указатель на тип
+	_ = flag.Value(&host)
 
-	flag.Var(host, "set_port", "Net address host:port")
+	flag.Var(&host, "set_port", "Net address host:port")
 
 	flag.Parse()
 
