@@ -3,11 +3,13 @@ package repository
 import (
 	"YandexPra/config"
 	"YandexPra/iternal/domain"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	parseUrl "net/url"
+	"os"
 	"strings"
 )
 
@@ -21,7 +23,6 @@ func NewUrlRepo() *UrlRepo {
 func (ur *UrlRepo) Post(url domain.Urls) (string, error) {
 
 	_, err := parseUrl.ParseRequestURI(url.Url)
-
 	if err != nil {
 		return "", errors.New("не валидный урл " + url.Url)
 	}
@@ -31,12 +32,17 @@ func (ur *UrlRepo) Post(url domain.Urls) (string, error) {
 		return config.Env.LocalApi + result.Short, nil
 	}
 
-	// метод библиотеки для сохранения сущности в базе данных
-	err = config.DB.Create(&url).Error
-
+	err = ur.saveFile(url)
 	if err != nil {
 		return "", err
 	}
+
+	// метод библиотеки для сохранения сущности в базе данных
+	err = config.DB.Create(&url).Error
+	if err != nil {
+		return "", err
+	}
+
 	return config.Env.LocalApi + url.Short, nil
 }
 
@@ -122,6 +128,7 @@ func (ur *UrlRepo) GetUser() ([]byte, error) {
 
 	return body, nil
 }
+
 func (ur *UrlRepo) PostShorten(model domain.Urls) (string, error) {
 
 	result, err := ur.Post(model)
@@ -130,4 +137,29 @@ func (ur *UrlRepo) PostShorten(model domain.Urls) (string, error) {
 	}
 
 	return result, nil
+}
+
+func (ur *UrlRepo) saveFile(url domain.Urls) error {
+
+	file, err := os.OpenFile("url.save", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(url)
+	if err != nil {
+		return err
+	}
+	_, err = file.WriteString("\n")
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write(data)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+	return nil
 }

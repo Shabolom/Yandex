@@ -62,8 +62,6 @@ func (a *ShortUrl) Post(c *gin.Context) {
 		return
 	}
 
-	c.Writer.Header().Set("content-type", "text/plain")
-
 	c.String(http.StatusCreated, result)
 }
 

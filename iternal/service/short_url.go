@@ -24,7 +24,6 @@ func (su *ShortUrl) Post(randUrl, url string) (string, error) {
 	}
 
 	result, err := urlRepo.Post(urlEntity)
-
 	if err != nil {
 		return "", err
 	}

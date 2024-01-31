@@ -13,6 +13,7 @@ func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		t := time.Now()
 
+		// продолжаем работать с хэндлером который идет после мидлвейра  (который был вызван изначально))
 		c.Next()
 
 		latency := time.Since(t)

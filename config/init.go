@@ -109,9 +109,9 @@ func CheckFlagEnv() {
 	}
 
 	if os.Getenv("LOCAL_API") != "" {
-		jsonApi = os.Getenv("LOCAL_API")
+		localApi = os.Getenv("LOCAL_API")
 	} else {
-		jsonApi = ""
+		localApi = ""
 	}
 
 	if os.Getenv("CONNECTION_API_AUT") != "" {
