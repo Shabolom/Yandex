@@ -1,16 +1,19 @@
 package api
 
 import (
-	"YandexPra/iternal/models"
-	"YandexPra/iternal/service"
-	"YandexPra/iternal/tools"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"strings"
+
+	"YandexPra/iternal/models"
+	"YandexPra/iternal/service"
+	"YandexPra/iternal/tools"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gocarina/gocsv"
+	log "github.com/sirupsen/logrus"
 )
 
 type ShortUrl struct{}
@@ -166,6 +169,64 @@ func (a *ShortUrl) GetShorten(c *gin.Context) {
 
 	result, err := urlService.PostShorten(reqUrl, shortUrl)
 
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+func (a *ShortUrl) PostCsv(c *gin.Context) {
+	var csvs []models.InfVidCsv
+
+	file, _, err := c.Request.FormFile("csv")
+	defer file.Close()
+
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	err = gocsv.UnmarshalMultipartFile(&file, &csvs)
+
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+	fmt.Println(csvs[0])
+	err = urlService.PostCsv(csvs)
+
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	c.String(http.StatusOK, "успешно заполнили базу")
+}
+
+func (a *ShortUrl) PostBatch(c *gin.Context) {
+	var urls []models.ReqUrl
+
+	data, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	err = json.Unmarshal(data, &urls)
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+	fmt.Println("1")
+	result, err := urlService.PostBatch(urls)
 	if err != nil {
 		tools.CreateError(http.StatusBadRequest, err, c)
 		log.WithField("component", "rest").Warn(err)

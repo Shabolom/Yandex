@@ -107,8 +107,9 @@ func (ur *UrlRepo) GetID() ([]byte, error) {
 }
 
 func (ur *UrlRepo) GetUser() ([]byte, error) {
+	c := config.Env
 
-	req, err := http.NewRequest(http.MethodGet, config.Env.JsonApi, nil)
+	req, err := http.NewRequest(http.MethodGet, c.JsonApi, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -139,9 +140,59 @@ func (ur *UrlRepo) PostShorten(model domain.Urls) (string, error) {
 	return result, nil
 }
 
+func (ur *UrlRepo) PostCsv(masDomainCsv []domain.VideoInfo) error {
+
+	go func([]domain.VideoInfo) {
+		tx := config.DB.Begin()
+		for _, csv := range masDomainCsv {
+			err := tx.
+				Create(&csv).
+				Error
+			if err != nil {
+				tx.Rollback()
+				panic(err)
+			}
+		}
+		tx.Commit()
+	}(masDomainCsv)
+
+	return nil
+}
+
+func (ur *UrlRepo) PostBatch(urls []domain.Urls) ([]domain.Urls, error) {
+	//errChan := make(chan error)
+	fmt.Println("3")
+
+	go func(urls []domain.Urls) {
+		fmt.Println("4")
+		tx := config.DB.Begin()
+		for _, url := range urls {
+			err := tx.
+				Create(&url).
+				Error
+			if err != nil {
+				fmt.Println("5")
+				tx.Rollback()
+				//errChan <- err
+				return
+			}
+		}
+		tx.Commit()
+		return
+	}(urls)
+
+	//if errChan != nil {
+	//	err := <-errChan
+	//	fmt.Println("7")
+	//	return []domain.Urls{}, err
+	//}
+	fmt.Println("8")
+	return urls, nil
+}
+
 func (ur *UrlRepo) saveFile(url domain.Urls) error {
 
-	file, err := os.OpenFile("url.save", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	file, err := os.OpenFile("url.save", os.O_CREATE|os.O_APPEND|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
@@ -150,6 +201,7 @@ func (ur *UrlRepo) saveFile(url domain.Urls) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = file.WriteString("\n")
 	if err != nil {
 		return err

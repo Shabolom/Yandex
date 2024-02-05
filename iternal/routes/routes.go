@@ -27,6 +27,8 @@ func SetupRouter() *gin.Engine {
 		authRequired.GET("/get/", url.GetID)
 		authRequired.GET("/get/user", url.GetUsers)
 		authRequired.POST("/api/shorten", url.GetShorten)
+		authRequired.POST("/api/csv", url.PostCsv)
+		authRequired.POST("/api/shorten/batch", url.PostBatch)
 	}
 
 	return r

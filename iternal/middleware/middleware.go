@@ -33,7 +33,6 @@ func Gzip() gin.HandlerFunc {
 				return
 			}
 			c.Request.Body = reader
-
 			defer reader.Close()
 		}
 	}
