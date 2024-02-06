@@ -84,6 +84,124 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/csv": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "url"
+                ],
+                "summary": "принимаем csv file в форме и заполняем базу его содержимым",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Body with CSV file",
+                        "name": "mpfd",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "успешно заполнили базу",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/shorten": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "url"
+                ],
+                "summary": "полуяаем сокращеный урл",
+                "parameters": [
+                    {
+                        "description": "User",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/models.ReqUrl"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ResUrl"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.Error"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/shorten/batch": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "url"
+                ],
+                "summary": "принимаем csv file в форме и заполняем базу его содержимым",
+                "parameters": [
+                    {
+                        "description": "User",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ReqUrl"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "успешно заполнили базу",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.Error"
+                        }
+                    }
+                }
+            }
+        },
         "/get/": {
             "get": {
                 "consumes": [
@@ -159,6 +277,28 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ReqUrl": {
+            "type": "object",
+            "required": [
+                "url"
+            ],
+            "properties": {
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ResUrl": {
+            "type": "object",
+            "required": [
+                "result"
+            ],
+            "properties": {
+                "result": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SaveStudent": {
             "type": "object",
             "required": [
@@ -185,13 +325,13 @@ const docTemplate = `{
                 "gender": {
                     "type": "string"
                 },
-                "id": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "surname": {
+                    "type": "string"
+                },
+                "type:uuid;": {
                     "type": "string"
                 },
                 "updated-at": {

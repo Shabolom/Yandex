@@ -7,7 +7,6 @@ import (
 	"YandexPra/iternal/repository"
 	"YandexPra/iternal/tools"
 	"encoding/json"
-	"fmt"
 )
 
 type ShortUrl struct {
@@ -28,7 +27,7 @@ func (su *ShortUrl) Post(randUrl, url string) (string, error) {
 
 	result, err := urlRepo.Post(urlEntity)
 	if err != nil {
-		return "", err
+		return result, err
 	}
 
 	return result, err
@@ -130,8 +129,13 @@ func (su *ShortUrl) PostCsv(csv []models2.InfVidCsv) error {
 
 func (su *ShortUrl) PostBatch(urls []models2.ReqUrl) ([]domain.Urls, error) {
 	var urlsReqEntity []domain.Urls
-	fmt.Println("2")
+
 	for _, url := range urls {
+
+		if err := tools.ValidUrl(url.Url); err != nil {
+			return []domain.Urls{}, err
+		}
+
 		urlReqEntityPart := domain.Urls{
 			Url:   url.Url,
 			Short: config.Env.LocalApi + tools.Base62Encode(tools.RundUrl()),
@@ -141,7 +145,7 @@ func (su *ShortUrl) PostBatch(urls []models2.ReqUrl) ([]domain.Urls, error) {
 
 	result, err := urlRepo.PostBatch(urlsReqEntity)
 	if err != nil {
-		return []domain.Urls{}, err
+		return result, err
 	}
 
 	return result, nil

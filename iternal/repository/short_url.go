@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	parseUrl "net/url"
 	"os"
 	"strings"
 )
@@ -22,17 +21,12 @@ func NewUrlRepo() *UrlRepo {
 
 func (ur *UrlRepo) Post(url domain.Urls) (string, error) {
 
-	_, err := parseUrl.ParseRequestURI(url.Url)
-	if err != nil {
-		return "", errors.New("не валидный урл " + url.Url)
-	}
-
 	if result, err := ur.Get(url.Url); err == nil {
-		fmt.Println("такой url уже есть в базе")
-		return config.Env.LocalApi + result.Short, nil
+		shortUrl := config.Env.LocalApi + result.Short
+		return shortUrl, errors.New(fmt.Sprintf("url: \v уже есть в базе", shortUrl))
 	}
 
-	err = ur.saveFile(url)
+	err := ur.saveFile(url)
 	if err != nil {
 		return "", err
 	}
@@ -160,33 +154,33 @@ func (ur *UrlRepo) PostCsv(masDomainCsv []domain.VideoInfo) error {
 }
 
 func (ur *UrlRepo) PostBatch(urls []domain.Urls) ([]domain.Urls, error) {
-	//errChan := make(chan error)
-	fmt.Println("3")
+	var res []domain.Urls
+	tx := config.DB.Begin()
+	var routErr bool
 
-	go func(urls []domain.Urls) {
-		fmt.Println("4")
-		tx := config.DB.Begin()
-		for _, url := range urls {
-			err := tx.
-				Create(&url).
-				Error
-			if err != nil {
-				fmt.Println("5")
-				tx.Rollback()
-				//errChan <- err
-				return
-			}
+	for _, url := range urls {
+		result, err := ur.Get(url.Url)
+
+		if err == nil {
+			res = append(res, result)
+			routErr = true
 		}
-		tx.Commit()
-		return
-	}(urls)
+	}
 
-	//if errChan != nil {
-	//	err := <-errChan
-	//	fmt.Println("7")
-	//	return []domain.Urls{}, err
-	//}
-	fmt.Println("8")
+	if routErr == true {
+		return res, errors.New("уже есть в базе:")
+	}
+
+	for _, url := range urls {
+		err := tx.
+			Create(&url).
+			Error
+		if err != nil {
+			tx.Rollback()
+		}
+	}
+	tx.Commit()
+
 	return urls, nil
 }
 

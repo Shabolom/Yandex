@@ -11,9 +11,9 @@ import (
 )
 
 func main() {
-	// @title    cmd Service
-	// @version  1.0.0
-	// @host     localhost:8000
+	//	@title		cmd Service
+	//	@version	1.0.0
+	//	@host		localhost:8000
 
 	config.CheckFlagEnv()
 	tools.InitLogger()
