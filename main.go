@@ -6,13 +6,14 @@ import (
 	migrate "YandexPra/init"
 	"YandexPra/iternal/routes"
 	"YandexPra/iternal/tools"
+
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-	// @title    cmd Service
-	// @version  1.0.0
-	// @host     localhost:8080
+	//	@title		cmd Service
+	//	@version	1.0.0
+	//	@host		localhost:8000
 
 	config.CheckFlagEnv()
 	tools.InitLogger()

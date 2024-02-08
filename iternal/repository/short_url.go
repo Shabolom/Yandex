@@ -3,11 +3,12 @@ package repository
 import (
 	"YandexPra/config"
 	"YandexPra/iternal/domain"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	parseUrl "net/url"
+	"os"
 	"strings"
 )
 
@@ -20,23 +21,22 @@ func NewUrlRepo() *UrlRepo {
 
 func (ur *UrlRepo) Post(url domain.Urls) (string, error) {
 
-	_, err := parseUrl.ParseRequestURI(url.Url)
-
-	if err != nil {
-		return "", errors.New("не валидный урл " + url.Url)
+	if result, err := ur.Get(url.Url); err == nil {
+		shortUrl := config.Env.LocalApi + result.Short
+		return shortUrl, errors.New(fmt.Sprintf("url: \v уже есть в базе", shortUrl))
 	}
 
-	if result, err := ur.Get(url.Url); err == nil {
-		fmt.Println("такой url уже есть в базе")
-		return config.Env.LocalApi + result.Short, nil
+	err := ur.saveFile(url)
+	if err != nil {
+		return "", err
 	}
 
 	// метод библиотеки для сохранения сущности в базе данных
 	err = config.DB.Create(&url).Error
-
 	if err != nil {
 		return "", err
 	}
+
 	return config.Env.LocalApi + url.Short, nil
 }
 
@@ -101,8 +101,9 @@ func (ur *UrlRepo) GetID() ([]byte, error) {
 }
 
 func (ur *UrlRepo) GetUser() ([]byte, error) {
+	c := config.Env
 
-	req, err := http.NewRequest(http.MethodGet, config.Env.JsonApi, nil)
+	req, err := http.NewRequest(http.MethodGet, c.JsonApi, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +123,7 @@ func (ur *UrlRepo) GetUser() ([]byte, error) {
 
 	return body, nil
 }
+
 func (ur *UrlRepo) PostShorten(model domain.Urls) (string, error) {
 
 	result, err := ur.Post(model)
@@ -130,4 +132,80 @@ func (ur *UrlRepo) PostShorten(model domain.Urls) (string, error) {
 	}
 
 	return result, nil
+}
+
+func (ur *UrlRepo) PostCsv(masDomainCsv []domain.VideoInfo) error {
+
+	go func([]domain.VideoInfo) {
+		tx := config.DB.Begin()
+		for _, csv := range masDomainCsv {
+			err := tx.
+				Create(&csv).
+				Error
+			if err != nil {
+				tx.Rollback()
+				panic(err)
+			}
+		}
+		tx.Commit()
+	}(masDomainCsv)
+
+	return nil
+}
+
+func (ur *UrlRepo) PostBatch(urls []domain.Urls) ([]domain.Urls, error) {
+	var res []domain.Urls
+	tx := config.DB.Begin()
+	var routErr bool
+
+	for _, url := range urls {
+		result, err := ur.Get(url.Url)
+
+		if err == nil {
+			res = append(res, result)
+			routErr = true
+		}
+	}
+
+	if routErr == true {
+		return res, errors.New("уже есть в базе:")
+	}
+
+	for _, url := range urls {
+		err := tx.
+			Create(&url).
+			Error
+		if err != nil {
+			tx.Rollback()
+		}
+	}
+	tx.Commit()
+
+	return urls, nil
+}
+
+func (ur *UrlRepo) saveFile(url domain.Urls) error {
+
+	file, err := os.OpenFile("url.save", os.O_CREATE|os.O_APPEND|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(url)
+	if err != nil {
+		return err
+	}
+
+	_, err = file.WriteString("\n")
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write(data)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+	return nil
 }

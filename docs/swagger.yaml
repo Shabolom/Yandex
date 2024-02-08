@@ -6,6 +6,20 @@ definitions:
       error:
         type: string
     type: object
+  models.ReqUrl:
+    properties:
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  models.ResUrl:
+    properties:
+      result:
+        type: string
+    required:
+    - result
+    type: object
   models.SaveStudent:
     properties:
       age:
@@ -18,11 +32,11 @@ definitions:
         type: string
       gender:
         type: string
-      id:
-        type: string
       name:
         type: string
       surname:
+        type: string
+      type:uuid;:
         type: string
       updated-at:
         type: string
@@ -47,7 +61,7 @@ definitions:
     - email
     - username
     type: object
-host: localhost:8080
+host: localhost:8000
 info:
   contact: {}
   title: cmd Service
@@ -98,6 +112,81 @@ paths:
         url как ключ
       tags:
       - shortUrl
+  /api/csv:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Body with CSV file
+        in: formData
+        name: mpfd
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: успешно заполнили базу
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Error'
+      summary: принимаем csv file в форме и заполняем базу его содержимым
+      tags:
+      - url
+  /api/shorten:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/models.ReqUrl'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ResUrl'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Error'
+      summary: полуяаем сокращеный урл
+      tags:
+      - url
+  /api/shorten/batch:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User
+        in: body
+        name: body
+        schema:
+          items:
+            $ref: '#/definitions/models.ReqUrl'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: успешно заполнили базу
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.Error'
+      summary: принимаем csv file в форме и заполняем базу его содержимым
+      tags:
+      - url
   /get/:
     get:
       consumes:

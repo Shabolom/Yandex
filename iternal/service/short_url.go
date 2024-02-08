@@ -1,9 +1,11 @@
 package service
 
 import (
+	"YandexPra/config"
 	"YandexPra/iternal/domain"
 	models2 "YandexPra/iternal/models"
 	"YandexPra/iternal/repository"
+	"YandexPra/iternal/tools"
 	"encoding/json"
 )
 
@@ -24,9 +26,8 @@ func (su *ShortUrl) Post(randUrl, url string) (string, error) {
 	}
 
 	result, err := urlRepo.Post(urlEntity)
-
 	if err != nil {
-		return "", err
+		return result, err
 	}
 
 	return result, err
@@ -92,4 +93,60 @@ func (su *ShortUrl) PostShorten(url models2.ReqUrl, short string) (models2.ResUr
 	urlRes := models2.ResUrl{Url: result}
 
 	return urlRes, nil
+}
+
+func (su *ShortUrl) PostCsv(csv []models2.InfVidCsv) error {
+	csvReqEntity := []domain.VideoInfo{}
+
+	for i, _ := range csv {
+		csvReqEntityPart := domain.VideoInfo{
+			VideoID:             csv[i].VideoID,
+			TrendingDate:        csv[i].TrendingDate,
+			Title:               csv[i].Title,
+			ChannelTitle:        csv[i].ChannelTitle,
+			CategoryId:          csv[i].CategoryId,
+			PublishTime:         csv[i].PublishTime,
+			Tags:                csv[i].Tags,
+			Likes:               csv[i].Likes,
+			Dislikes:            csv[i].Dislikes,
+			CommentCount:        csv[i].CommentCount,
+			ThumbnailLink:       csv[i].ThumbnailLink,
+			CommentsDisabled:    csv[i].CommentsDisabled,
+			RatingsDisabled:     csv[i].RatingsDisabled,
+			VideoErrorOrRemoved: csv[i].VideoErrorOrRemoved,
+			Description:         csv[i].Description,
+		}
+		csvReqEntity = append(csvReqEntity, csvReqEntityPart)
+	}
+
+	err := urlRepo.PostCsv(csvReqEntity)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (su *ShortUrl) PostBatch(urls []models2.ReqUrl) ([]domain.Urls, error) {
+	var urlsReqEntity []domain.Urls
+
+	for _, url := range urls {
+
+		if err := tools.ValidUrl(url.Url); err != nil {
+			return []domain.Urls{}, err
+		}
+
+		urlReqEntityPart := domain.Urls{
+			Url:   url.Url,
+			Short: config.Env.LocalApi + tools.Base62Encode(tools.RundUrl()),
+		}
+		urlsReqEntity = append(urlsReqEntity, urlReqEntityPart)
+	}
+
+	result, err := urlRepo.PostBatch(urlsReqEntity)
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
 }
