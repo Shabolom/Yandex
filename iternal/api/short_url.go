@@ -2,15 +2,17 @@ package api
 
 import (
 	"YandexPra/config"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"strings"
-
 	"YandexPra/iternal/models"
 	"YandexPra/iternal/service"
 	"YandexPra/iternal/tools"
+	"encoding/json"
+	"fmt"
+	"github.com/gofrs/uuid"
+	"github.com/golang-jwt/jwt/v4"
+	"io"
+	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gocarina/gocsv"
@@ -66,20 +68,15 @@ func (a *ShortUrl) Post(c *gin.Context) {
 
 	defer c.Request.Body.Close()
 
-	result, err := urlService.Post(shortUrl, stringContent)
+	result, err, code := urlService.Post(shortUrl, stringContent)
 
 	if err != nil {
-		if result != "" {
-			tools.CreateError(http.StatusConflict, err, c)
-			log.WithField("component", "rest").Warn(err)
-			return
-		}
-		tools.CreateError(http.StatusBadRequest, err, c)
+		tools.CreateError(code, err, c)
 		log.WithField("component", "rest").Warn(err)
 		return
 	}
 
-	c.String(http.StatusCreated, result)
+	c.String(code, result)
 }
 
 // Get производим переход (Redirect) по url принимая короткий урл как ключ
@@ -187,7 +184,6 @@ func (a *ShortUrl) GetUsers(c *gin.Context) {
 //	@Failure	400	{object}	models.Error
 //	@Router		/api/shorten [post]
 func (a *ShortUrl) GetShorten(c *gin.Context) {
-
 	var reqUrl models.ReqUrl
 
 	shortUrl := tools.Base62Encode(tools.RundUrl())
@@ -208,10 +204,10 @@ func (a *ShortUrl) GetShorten(c *gin.Context) {
 		return
 	}
 
-	result, err := urlService.PostShorten(reqUrl, shortUrl)
+	result, err, code := urlService.PostShorten(reqUrl, shortUrl)
 
 	if err != nil {
-		tools.CreateError(http.StatusBadRequest, err, c)
+		tools.CreateError(code, err, c)
 		log.WithField("component", "rest").Warn(err)
 		return
 	}
@@ -273,6 +269,26 @@ func (a *ShortUrl) PostCsv(c *gin.Context) {
 //	@Router		/api/shorten/batch [post]
 func (a *ShortUrl) PostBatch(c *gin.Context) {
 	var urls []models.ReqUrl
+	claim := &tools.Claims{}
+	logUUID := uuid.UUID{}
+
+	if c.Request.Header.Get("Authorization") != "" {
+		strToken := c.Request.Header.Get("Authorization")
+		token, err := jwt.ParseWithClaims(strToken, claim, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			}
+			return []byte(config.Env.SecretKey), nil
+		})
+		if err != nil {
+			tools.CreateError(http.StatusBadRequest, err, c)
+			log.WithField("component", "ReadAll").Warn(err)
+			return
+		}
+		if token.Valid {
+			logUUID = claim.UserID
+		}
+	}
 
 	data, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -288,15 +304,118 @@ func (a *ShortUrl) PostBatch(c *gin.Context) {
 		return
 	}
 
-	result, err := urlService.PostBatch(urls)
+	result, err, code := urlService.PostBatch(urls, logUUID)
 
 	if err != nil {
-		if err.Error() == "уже есть в базе:" {
-			tools.CreateError(http.StatusConflict, err, c)
-			c.JSON(http.StatusConflict, result)
-			log.WithField("component", "rest").Warn(err)
-			return
-		}
+		tools.CreateError(code, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	c.JSON(code, result)
+}
+
+func (a *ShortUrl) Register(c *gin.Context) {
+	var regUsers models.RegisterUsers
+
+	data, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	err = json.Unmarshal(data, &regUsers)
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	err = urlService.Register(regUsers)
+
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	c.String(http.StatusOK, "успешно зарегестрировались")
+}
+
+func (a *ShortUrl) Login2(c *gin.Context) {
+	var regUsers models.RegisterUsers
+
+	data, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	err = json.Unmarshal(data, &regUsers)
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	err, result := urlService.Login2(regUsers)
+
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tools.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			// ниже описание части полей и за что они отвечают
+			Issuer:    "Timur",                                           // Указывает, кто создал и подписал JWT.
+			Subject:   "Authorization",                                   // Определяет субъект (тему), к которой относится JWT.
+			IssuedAt:  jwt.NewNumericDate(time.Now()),                    // Указывает время создания JWT.
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 2)), // Указывает, кто создал и подписал JWT.
+		},
+		// собственное утверждение
+		UserID: result.ID,
+		Login:  regUsers.Login,
+	})
+
+	tokenString, err := token.SignedString([]byte(config.Env.SecretKey))
+
+	if err != nil {
+		tools.CreateError(http.StatusBadRequest, err, c)
+		log.WithField("component", "rest").Warn(err)
+		return
+	}
+
+	cookie := http.Cookie{
+		Name:  "Token",     //Имя cookie.
+		Value: tokenString, //Значение cookie.
+		Path:  "/",         //Путь на сервере, для которого cookie действителен. Если установлен "/",
+		// то cookie действителен для всего домена.
+		Expires: time.Now().Add(time.Hour * 2), // Время истечения срока действия cookie.
+		// Если не указано, то cookie действителен только в текущей сессии.
+
+		//MaxAge:     0,// Продолжительность срока действия cookie в секундах.
+		//Secure:     false,// Указывает, что cookie должен быть отправлен только по защищенному (HTTPS) соединению.
+		//HttpOnly:   false,// Указывает, что cookie должен быть доступен только через HTTP-запросы, а не JavaScript.
+		//SameSite:   0,
+		//Raw:        "",
+		//Unparsed:   nil,
+	}
+	c.Writer.Header().Set("token", tokenString)
+	http.SetCookie(c.Writer, &cookie)
+
+	c.String(http.StatusOK, "успешно авторизировались")
+}
+
+func (a *ShortUrl) GetUrls(c *gin.Context) {
+	key := c.Param("userid")
+
+	result, err := urlService.GetUserUrls(key)
+
+	if err != nil {
 		tools.CreateError(http.StatusBadRequest, err, c)
 		log.WithField("component", "rest").Warn(err)
 		return

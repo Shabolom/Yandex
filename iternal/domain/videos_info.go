@@ -1,7 +1,7 @@
 package domain
 
 type VideoInfo struct {
-	VideoID             string `gorm:"primaryKey ;column:video_id; type:text"`
+	VideoID             string `gorm:"primaryKey; column:video_id; type:text"`
 	TrendingDate        string `gorm:"column:trending_date; type:text"`
 	Title               string `gorm:"column:title; type:text"`
 	ChannelTitle        string `gorm:"column:channel_title; type:text"`

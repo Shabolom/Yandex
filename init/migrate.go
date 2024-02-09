@@ -17,7 +17,7 @@ func Migrate() {
 	db := config.DB
 	id, _ := uuid.NewV4()
 	id2, _ := uuid.NewV4()
-
+	id3, _ := uuid.NewV4()
 	// создаем объект миграции данная строка всегда статична (всегда такая)
 	m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
 		{
@@ -53,6 +53,25 @@ func Migrate() {
 			// это метод отмены миграции ни разу не использовал
 			Rollback: func(tx *gorm.DB) error {
 				err := tx.DropTable("video_infos").Error
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+		}, {
+			// id всех миграций кторые были проведены
+			ID: id3.String(),
+			// переписываем так при создании таблицы изменяется только структура которую мы передаем
+			Migrate: func(tx *gorm.DB) error {
+				err := tx.AutoMigrate(&domain.RegisterUsers{}).Error
+				if err != nil {
+					return err
+				}
+				return nil
+			},
+			// это метод отмены миграции ни разу не использовал
+			Rollback: func(tx *gorm.DB) error {
+				err := tx.DropTable("register_users").Error
 				if err != nil {
 					return err
 				}

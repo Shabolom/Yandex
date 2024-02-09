@@ -3,9 +3,11 @@ package repository
 import (
 	"YandexPra/config"
 	"YandexPra/iternal/domain"
+	"YandexPra/iternal/tools"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"os"
@@ -19,31 +21,29 @@ func NewUrlRepo() *UrlRepo {
 	return &UrlRepo{}
 }
 
-func (ur *UrlRepo) Post(url domain.Urls) (string, error) {
+func (ur *UrlRepo) Post(url domain.Urls) (string, error, int) {
 
 	if result, err := ur.Get(url.Url); err == nil {
-		shortUrl := config.Env.LocalApi + result.Short
-		return shortUrl, errors.New(fmt.Sprintf("url: \v уже есть в базе", shortUrl))
+		return result.Short, nil, http.StatusConflict
 	}
 
 	err := ur.saveFile(url)
 	if err != nil {
-		return "", err
+		return "", err, http.StatusBadRequest
 	}
 
 	// метод библиотеки для сохранения сущности в базе данных
 	err = config.DB.Create(&url).Error
 	if err != nil {
-		return "", err
+		return "", err, http.StatusBadRequest
 	}
 
-	return config.Env.LocalApi + url.Short, nil
+	return config.Env.LocalApi + url.Short, nil, http.StatusCreated
 }
 
 func (ur *UrlRepo) Get(key string) (domain.Urls, error) {
 	var url domain.Urls
 
-	// метод библиотеки для сохранения сущности в базе данных
 	err := config.DB.
 		Where("short = ?", key).
 		Or("url = ?", key).
@@ -124,14 +124,14 @@ func (ur *UrlRepo) GetUser() ([]byte, error) {
 	return body, nil
 }
 
-func (ur *UrlRepo) PostShorten(model domain.Urls) (string, error) {
+func (ur *UrlRepo) PostShorten(model domain.Urls) (string, error, int) {
 
-	result, err := ur.Post(model)
+	result, err, code := ur.Post(model)
 	if err != nil {
-		return "", err
+		return "", err, code
 	}
 
-	return result, nil
+	return result, nil, code
 }
 
 func (ur *UrlRepo) PostCsv(masDomainCsv []domain.VideoInfo) error {
@@ -153,14 +153,13 @@ func (ur *UrlRepo) PostCsv(masDomainCsv []domain.VideoInfo) error {
 	return nil
 }
 
-func (ur *UrlRepo) PostBatch(urls []domain.Urls) ([]domain.Urls, error) {
+func (ur *UrlRepo) PostBatch(urls []domain.Urls) ([]domain.Urls, error, int) {
 	var res []domain.Urls
 	tx := config.DB.Begin()
 	var routErr bool
 
 	for _, url := range urls {
 		result, err := ur.Get(url.Url)
-
 		if err == nil {
 			res = append(res, result)
 			routErr = true
@@ -168,7 +167,7 @@ func (ur *UrlRepo) PostBatch(urls []domain.Urls) ([]domain.Urls, error) {
 	}
 
 	if routErr == true {
-		return res, errors.New("уже есть в базе:")
+		return res, nil, http.StatusConflict
 	}
 
 	for _, url := range urls {
@@ -181,6 +180,61 @@ func (ur *UrlRepo) PostBatch(urls []domain.Urls) ([]domain.Urls, error) {
 	}
 	tx.Commit()
 
+	return urls, nil, http.StatusCreated
+}
+
+func (ur *UrlRepo) Register(user domain.RegisterUsers) error {
+	var users domain.RegisterUsers
+
+	if err := config.DB.
+		Find(&users, "login = ?", user.Login).
+		Error; err == nil {
+		return errors.New("пользователь уже есть в базе данных")
+	}
+
+	err := config.DB.
+		Create(&user).
+		Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ur *UrlRepo) Auth(password, login string) (error, domain.RegisterUsers) {
+	var user domain.RegisterUsers
+
+	err := config.DB.
+		Where("login= ?", login).
+		First(&user).
+		Error
+
+	if err != nil {
+		return errors.New("не верный логин или пароль"), domain.RegisterUsers{}
+	}
+
+	if !tools.CheckPasswordHash(password, user.Password) {
+		return errors.New("не верный логин или пароль"), domain.RegisterUsers{}
+	}
+
+	return nil, user
+}
+
+func (ur *UrlRepo) GetUserUrls(id string) ([]domain.Urls, error) {
+	var urls []domain.Urls
+	fmt.Println(id, "qweqweqwe")
+	parsedUUID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = config.DB.Where("user_id=?", parsedUUID).
+		Find(&urls).
+		Error
+	if err != nil {
+		return []domain.Urls{}, err
+	}
 	return urls, nil
 }
 

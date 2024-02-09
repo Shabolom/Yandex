@@ -21,6 +21,7 @@ type env struct {
 	ConnectionApi string
 	ConnectionGet string
 	Production    bool
+	SecretKey     string
 }
 
 // Env глобальная переменная для доступа к переменным среды
@@ -41,6 +42,7 @@ func CheckFlagEnv() {
 	var connectionApi string
 	var connectionGet string
 	var production bool
+	var secretKey string
 
 	// сканируем env файл
 	err := godotenv.Load()
@@ -57,6 +59,7 @@ func CheckFlagEnv() {
 	var flagDbPassword = flag.String("dpa", "", "dbPassword")
 	var flagDbName = flag.String("dn", "", "dbName")
 	var flagProduction = flag.Bool("pr", false, "production")
+	var flagSecretKey = flag.String("ske", "", "secret key for jwt")
 
 	flag.Parse()
 
@@ -132,6 +135,12 @@ func CheckFlagEnv() {
 		production = false
 	}
 
+	if os.Getenv("SECRET_KEY") != "" {
+		secretKey = os.Getenv("SECRET_KEY")
+	} else {
+		secretKey = ""
+	}
+
 	if *flagHost != "" {
 		host = *flagHost
 	}
@@ -164,6 +173,10 @@ func CheckFlagEnv() {
 		production = *flagProduction
 	}
 
+	if *flagSecretKey != "" {
+		secretKey = *flagSecretKey
+	}
+
 	Env = env{
 		Host:          host,
 		Port:          port,
@@ -177,5 +190,6 @@ func CheckFlagEnv() {
 		ConnectionApi: connectionApi,
 		ConnectionGet: connectionGet,
 		Production:    production,
+		SecretKey:     secretKey,
 	}
 }
